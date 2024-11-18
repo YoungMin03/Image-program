@@ -228,3 +228,34 @@ body {
     visibility: visible;
     opacity: 1;
 }
+
+.image-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.delete-btn {
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: background-color 0.3s;
+}
+
+.delete-btn:hover {
+    background: #cc0000;
+}
+
+.filename {
+    font-weight: bold;
+    color: #333;
+}

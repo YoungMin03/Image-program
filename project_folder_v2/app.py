@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+import shutil
 
 def install_required_packages():
     """필요한 패키지 설치"""
@@ -37,12 +38,18 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# 필요한 디렉토리 생성
-for directory in ['templates', 'static/css', 'static/js', 'uploads']:
-    dir_path = os.path.join(BASE_DIR, directory)
-    if not os.path.exists(dir_path):
+def initialize_folders():
+    """필요한 폴더 초기화"""
+    # uploads 폴더 초기화
+    if os.path.exists(UPLOAD_FOLDER):
+        shutil.rmtree(UPLOAD_FOLDER)
+        print(f"기존 uploads 폴더 삭제됨: {UPLOAD_FOLDER}")
+    
+    # 필요한 디렉토리 생성
+    for directory in ['templates', 'static/css', 'static/js', 'uploads']:
+        dir_path = os.path.join(BASE_DIR, directory)
         try:
-            os.makedirs(dir_path)
+            os.makedirs(dir_path, exist_ok=True)
             print(f"디렉토리 생성됨: {dir_path}")
         except Exception as e:
             print(f"디렉토리 생성 실패: {dir_path} - {str(e)}")
@@ -62,10 +69,32 @@ def secure_filename_with_hangul(filename):
 def index():
     return render_template('index.html')
 
-# 이미지 제공을 위한 라우트 추가
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/delete/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    try:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return jsonify({
+                'success': True,
+                'message': '이미지가 삭제되었습니다.',
+                'filename': filename
+            })
+        return jsonify({
+            'success': False,
+            'error': '파일을 찾을 수 없습니다.',
+            'filename': filename
+        }), 404
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'파일 삭제 중 오류가 발생했습니다: {str(e)}',
+            'filename': filename
+        }), 500
 
 @app.route('/upload', methods=['POST'])
 def upload_files():
@@ -103,7 +132,8 @@ def upload_files():
                     'error': f'파일 크기가 너무 큽니다. 최대 {MAX_FILE_SIZE/1024/1024:.1f}MB까지 가능합니다.'
                 })
                 continue
-                
+            
+            # 파일 형식 검사
             if not allowed_file(original_filename):
                 results.append({
                     'original_filename': original_filename,
@@ -111,10 +141,8 @@ def upload_files():
                 })
                 continue
             
-            # 파일 저장
+            # 파일 임시 저장 및 메타데이터 검사
             file.save(final_filepath)
-            
-            # 메타데이터 추출
             processor = ImageProcessor()
             metadata = processor.extract_metadata(final_filepath)
             
@@ -126,7 +154,6 @@ def upload_files():
                 missing_data.append('위치')
             
             if missing_data:
-                # 메타데이터가 없는 경우 파일 삭제
                 os.remove(final_filepath)
                 error_message = f"{'와 '.join(missing_data)} 정보가 없는 이미지입니다."
                 results.append({
@@ -135,6 +162,7 @@ def upload_files():
                 })
                 continue
             
+            # 메타데이터가 있는 경우 결과 추가
             results.append({
                 'original_filename': original_filename,
                 'saved_filename': safe_filename,
@@ -142,6 +170,8 @@ def upload_files():
             })
             
         except Exception as e:
+            if os.path.exists(final_filepath):
+                os.remove(final_filepath)
             results.append({
                 'original_filename': original_filename,
                 'error': '파일 처리 중 오류가 발생했습니다.'
@@ -150,5 +180,7 @@ def upload_files():
     return jsonify(results)
 
 if __name__ == '__main__':
+    print("서버 시작 준비 중...")
+    initialize_folders()  # 서버 시작 시 폴더 초기화
     print(f"업로드 폴더 경로: {UPLOAD_FOLDER}")
     app.run(debug=True)

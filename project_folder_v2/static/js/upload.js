@@ -93,7 +93,6 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     }
 });
 
-// 사이드바에 업로드된 이미지 추가
 function updateUploadedImages(result) {
     const uploadedImages = document.getElementById('uploadedImages');
     const imageItem = document.createElement('div');
@@ -101,9 +100,12 @@ function updateUploadedImages(result) {
 
     if (!result.error && result.metadata) {
         imageItem.innerHTML = `
+            <div class="image-header">
+                <span class="filename">${result.original_filename}</span>
+                <button class="delete-btn" onclick="deleteImage('${result.saved_filename}', this)">×</button>
+            </div>
             <img src="/uploads/${result.saved_filename}" alt="${result.original_filename}" class="uploaded-image">
             <div class="image-info">
-                <p class="filename">${result.original_filename}</p>
                 <div class="metadata">
                     <p class="time">📅 ${result.metadata.촬영시간 || '시간 정보 없음'}</p>
                     ${result.metadata.위도 ? 
@@ -114,12 +116,34 @@ function updateUploadedImages(result) {
             </div>
         `;
         
-        // 최신 업로드를 상단에 추가
         if (uploadedImages.firstChild) {
             uploadedImages.insertBefore(imageItem, uploadedImages.firstChild);
         } else {
             uploadedImages.appendChild(imageItem);
         }
+    }
+}
+
+// 이미지 삭제 함수
+function deleteImage(filename, buttonElement) {
+    if (confirm('이미지를 삭제하시겠습니까?')) {
+        fetch(`/delete/${filename}`, {
+            method: 'DELETE',
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 삭제 성공 시 해당 이미지 항목 제거
+                const imageItem = buttonElement.closest('.uploaded-image-item');
+                imageItem.remove();
+            } else {
+                alert('이미지 삭제 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('이미지 삭제 중 오류 발생');
+            console.error('Error:', error);
+        });
     }
 }
 
