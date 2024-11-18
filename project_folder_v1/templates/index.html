@@ -1,0 +1,24 @@
+<!-- templates/index.html -->
+<!-- 설명: 메인 페이지 UI를 구성하는 HTML 파일 -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>여행 경로 추적기</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>여행 사진 업로드</h1>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="imageInput" accept=".jpg,.jpeg,.png">
+            <button type="submit">업로드</button>
+        </form>
+        <div id="message"></div>
+        <div id="preview"></div>
+    </div>
+    <!-- EXIF 처리를 위한 스크립트를 먼저 로드 -->
+    <script src="{{ url_for('static', filename='js/exif.js') }}"></script>
+    <!-- 업로드 처리를 위한 스크립트 -->
+    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+</body>
+</html>

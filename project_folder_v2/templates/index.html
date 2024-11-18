@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>이미지 업로드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="upload-container">
+        <h2>이미지 업로드</h2>
+        <div class="upload-form">
+            <form id="uploadForm" method="post" enctype="multipart/form-data">
+                <div class="file-input-wrapper">
+                    <!-- multiple 속성 추가 및 name 속성을 files로 변경 -->
+                    <input type="file" id="fileInput" name="files[]" multiple accept=".jpg,.jpeg,.png">
+                    <label for="fileInput" class="file-label">파일 선택</label>
+                    <span id="fileList">선택된 파일 없음</span>
+                </div>
+                <button type="submit" class="upload-button">업로드</button>
+            </form>
+        </div>
+        <div id="preview" class="preview-container"></div>
+        <div id="error" class="error-message"></div>
+    </div>
+    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+/* static/css/style.css */
+/* 설명: 기본 스타일링을 담당하는 CSS 파일 */
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+#uploadForm {
+    margin: 20px 0;
+    padding: 20px;
+    border: 2px dashed #ccc;
+    text-align: center;
+}
+
+.upload-result {
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.metadata-status {
+    margin: 10px 0;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+.status-item .icon {
+    margin-right: 10px;
+    font-weight: bold;
+}
+
+.status-item.success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.status-item.warning {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+
+.info-message {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e3f2fd;
+    border-radius: 4px;
+    color: #1565c0;
+}
+
+.info-message p {
+    margin: 5px 0;
+}
+
+.message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+}
+
+.message.error {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.message.success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.message.warning {
+    background-color: #fff3e0;
+    color: #ef6c00;
+}
+
+.message.info {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
