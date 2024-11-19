@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 import shutil
+import re
 
 def install_required_packages():
     """필요한 패키지 설치"""
@@ -65,8 +66,30 @@ def secure_filename_with_hangul(filename):
     ext = ext.lower()
     return f"{name}{ext}"
 
+def convert_datetime_to_filename(datetime_str):
+    """촬영시간을 파일명 형식으로 변환"""
+    match = re.match(r'^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})$', datetime_str)
+    if match:
+        year, month, day, hour, minute, second = match.groups()
+        # YY/MM/DD_HHMMSS 형식으로 변환
+        filename = f'{year[2:]}{month}{day}_{hour}{minute}{second}'
+        return filename
+    return None
+
 @app.route('/')
 def index():
+    # uploads 폴더 초기화
+    if os.path.exists(UPLOAD_FOLDER):
+        shutil.rmtree(UPLOAD_FOLDER)
+        print(f"기존 uploads 폴더 삭제됨: {UPLOAD_FOLDER}")
+    
+    # uploads 폴더 새로 생성
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        print(f"uploads 폴더 생성됨: {UPLOAD_FOLDER}")
+    except Exception as e:
+        print(f"uploads 폴더 생성 실패: {str(e)}")
+
     return render_template('index.html')
 
 @app.route('/uploads/<filename>')
@@ -110,16 +133,9 @@ def upload_files():
             
         try:
             original_filename = file.filename
-            safe_filename = secure_filename_with_hangul(original_filename)
-            final_filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
-            
-            # 파일 중복 검사
-            if os.path.exists(final_filepath):
-                results.append({
-                    'original_filename': original_filename,
-                    'error': '이미 업로드된 이미지입니다.'
-                })
-                continue
+            # 임시로 파일 저장
+            temp_filename = secure_filename_with_hangul(original_filename)
+            temp_filepath = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
             
             # 파일 크기 검사
             file.seek(0, 2)
@@ -142,9 +158,9 @@ def upload_files():
                 continue
             
             # 파일 임시 저장 및 메타데이터 검사
-            file.save(final_filepath)
+            file.save(temp_filepath)
             processor = ImageProcessor()
-            metadata = processor.extract_metadata(final_filepath)
+            metadata = processor.extract_metadata(temp_filepath)
             
             # 메타데이터 검사
             missing_data = []
@@ -154,7 +170,7 @@ def upload_files():
                 missing_data.append('위치')
             
             if missing_data:
-                os.remove(final_filepath)
+                os.remove(temp_filepath)
                 error_message = f"{'와 '.join(missing_data)} 정보가 없는 이미지입니다."
                 results.append({
                     'original_filename': original_filename,
@@ -162,16 +178,33 @@ def upload_files():
                 })
                 continue
             
+            # 촬영시간으로 파일명 변경
+            _, ext = os.path.splitext(original_filename)
+            new_filename = convert_datetime_to_filename(metadata['촬영시간']) + ext.lower()
+            new_filepath = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
+            
+            # 최종 파일명으로 중복 검사
+            if os.path.exists(new_filepath):
+                os.remove(temp_filepath)
+                results.append({
+                    'original_filename': original_filename,
+                    'error': '동일한 촬영 시간의 이미지가 이미 존재합니다.'
+                })
+                continue
+            
+            # 파일명 변경
+            os.rename(temp_filepath, new_filepath)
+            
             # 메타데이터가 있는 경우 결과 추가
             results.append({
                 'original_filename': original_filename,
-                'saved_filename': safe_filename,
+                'saved_filename': new_filename,
                 'metadata': metadata
             })
             
         except Exception as e:
-            if os.path.exists(final_filepath):
-                os.remove(final_filepath)
+            if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
             results.append({
                 'original_filename': original_filename,
                 'error': '파일 처리 중 오류가 발생했습니다.'

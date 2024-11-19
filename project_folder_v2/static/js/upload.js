@@ -71,10 +71,18 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
                     }
                 }
             });
+    
+            // 파일 입력 초기화
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileList').textContent = '선택된 파일 없음';
         })
         .catch(err => {
             error.textContent = '업로드 중 오류가 발생했습니다.';
             preview.innerHTML = '';
+            
+            // 에러 발생시에도 파일 입력 초기화
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileList').textContent = '선택된 파일 없음';
         });
     }
 });
