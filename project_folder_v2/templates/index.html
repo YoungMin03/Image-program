@@ -21,13 +21,17 @@
             </div>
             <div id="preview" class="preview-container"></div>
             <div id="error" class="error-message"></div>
-            <button id="showMapBtn" class="map-button" onclick="location.href='/map'" style="display: none;">지도로 보기</button>
         </div>
 
         <!-- 사이드바: 업로드된 이미지 목록 -->       
         <div class="sidebar">
             <h3>업로드된 이미지</h3>
             <div id="uploadedImages" class="uploaded-images"></div>
+            <div class="upload-counter">
+                <span id="imageCount">0</span>/<span id="maxImageCount">5</span> 이미지
+                <p class="limit-warning" id="limitWarning" style="display: none;"></p>
+            </div>
+            <button id="showMapBtn" class="map-button" onclick="location.href='/map'" style="display: none;">지도로 보기</button>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/upload.js') }}"></script>

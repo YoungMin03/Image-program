@@ -35,8 +35,9 @@ app = Flask(__name__,
 # 업로드 설정
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'JPG', 'JPEG', 'PNG'}
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_IMAGES = 5  # 최대 이미지 수 설정
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -77,83 +78,113 @@ def convert_datetime_to_filename(datetime_str):
         return filename
     return None
 
+@app.route('/get_settings')
+def get_settings():
+    # 현재 업로드된 이미지 수 계산
+    current_images = len([f for f in os.listdir(UPLOAD_FOLDER) 
+                        if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
+    
+    return jsonify({
+        'max_images': MAX_IMAGES,
+        'max_file_size': MAX_FILE_SIZE,
+        'current_images': current_images
+    })
+
 @app.route('/map')
 def show_map():
-    m = folium.Map(
-        location=[37.5665, 126.9780],
-        zoom_start=12
-    )
-    
-    # 업로드된 이미지들의 위치와 시간 정보를 저장할 리스트
-    locations = []
-    
-    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
-        if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            processor = ImageProcessor()
-            metadata = processor.extract_metadata(filepath)
-            
-            if metadata and '위도' in metadata and '경도' in metadata:
-                locations.append({
-                    'position': [float(metadata['위도']), float(metadata['경도'])],
-                    'time': metadata.get('촬영시간', ''),
-                    'filename': filename
-                })
-    
-    # 시간순으로 정렬
-    locations.sort(key=lambda x: x['time'])
-    
-    # 마커와 팝업 추가
-    for location in locations:
-        popup_content = f"""
-            <div style="width:200px">
-                <img src="/uploads/{location['filename']}" style="width:100%;border-radius:4px;margin-bottom:8px">
-                <div style="font-size:12px;color:#666;">
-                    <p style="margin:4px 0">촬영시간: {location['time']}</p>
-                    <p style="margin:4px 0">위도: {location['position'][0]}</p>
-                    <p style="margin:4px 0">경도: {location['position'][1]}</p>
-                </div>
-            </div>
-        """
+    try:
+        # 업로드된 이미지들의 메타데이터 수집
+        locations = []
+        for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                processor = ImageProcessor()
+                metadata = processor.extract_metadata(filepath)
+                
+                if metadata and '위도' in metadata and '경도' in metadata:
+                    locations.append({
+                        'filename': filename,
+                        'lat': float(metadata['위도']),
+                        'lng': float(metadata['경도']),
+                        'time': metadata.get('촬영시간', '')
+                    })
         
-        folium.Marker(
-            location['position'],
-            popup=folium.Popup(popup_content, max_width=250),
-            icon=folium.Icon(color='red', icon='info-sign')
-        ).add_to(m)
-    
-    # 위치들을 선으로 연결
-    if len(locations) > 1:
-        points = [loc['position'] for loc in locations]
-        folium.PolyLine(
-            points,
-            weight=2,
-            color='blue',
-            opacity=0.8
-        ).add_to(m)
-
-    # HTML에 버튼 추가
-    map_html = m._repr_html_()
-    return f"""
-        <div style="position: relative;">
-            <a href="/" style="
-                position: absolute;
-                top: 20px;
-                right: 20px;
-                z-index: 1000;
-                background-color: white;
-                padding: 10px 20px;
-                border-radius: 4px;
-                text-decoration: none;
-                color: #333;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                font-family: Arial, sans-serif;
-                ">메인 페이지로 돌아가기</a>
-            {map_html}
-        </div>
-    """
-    
-    return m._repr_html_()
+        # 시간순 정렬
+        locations.sort(key=lambda x: x['time'])
+        
+        # 지도 생성
+        m = folium.Map(
+            location=[37.5665, 126.9780] if not locations else [locations[0]['lat'], locations[0]['lng']],
+            zoom_start=12
+        )
+        
+        # 마커와 경로 추가
+        points = []
+        for loc in locations:
+            # 팝업 내용 생성
+            popup_content = f"""
+                <div style="width:200px">
+                    <img src="/uploads/{loc['filename']}" style="width:100%;border-radius:4px;margin-bottom:8px">
+                    <div style="font-size:12px;color:#666;">
+                        <p style="margin:4px 0">촬영시간: {loc['time']}</p>
+                        <p style="margin:4px 0">위도: {loc['lat']}</p>
+                        <p style="margin:4px 0">경도: {loc['lng']}</p>
+                    </div>
+                </div>
+            """
+            
+            # 마커 추가
+            folium.Marker(
+                [loc['lat'], loc['lng']],
+                popup=folium.Popup(popup_content, max_width=250),
+                icon=folium.Icon(color='red')
+            ).add_to(m)
+            
+            points.append([loc['lat'], loc['lng']])
+        
+        # 경로 선 그리기
+        if len(points) > 1:
+            folium.PolyLine(
+                points,
+                weight=2,
+                color='blue',
+                opacity=0.8
+            ).add_to(m)
+        
+        # 돌아가기 버튼이 있는 지도 HTML 생성
+        map_html = m._repr_html_()
+        return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    .back-button {{
+                        position: absolute;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 1000;
+                        background-color: white;
+                        padding: 10px 20px;
+                        border-radius: 4px;
+                        text-decoration: none;
+                        color: #333;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        font-family: Arial, sans-serif;
+                    }}
+                    .back-button:hover {{
+                        background-color: #f0f0f0;
+                    }}
+                </style>
+            </head>
+            <body>
+                <a href="/" class="back-button">메인 페이지로 돌아가기</a>
+                {map_html}
+            </body>
+            </html>
+        """
+            
+    except Exception as e:
+        return f"지도 생성 중 오류 발생: {str(e)}"
 
 @app.route('/')
 def index():

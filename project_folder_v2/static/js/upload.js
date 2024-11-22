@@ -1,3 +1,7 @@
+let uploadedImageCount = 0;
+let MAX_IMAGES;
+let MAX_FILE_SIZE;
+
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -5,7 +9,6 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     const files = fileInput.files;
     const error = document.getElementById('error');
     const preview = document.getElementById('preview');
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     
     if (files.length === 0) {
         error.textContent = '파일을 선택해주세요.';
@@ -28,6 +31,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
                 <p>파일명: ${file.name}</p>
                 <p class="error">파일이 너무 큽니다. (${(file.size/1024/1024).toFixed(1)}MB / 최대 5MB)</p>
             `;
+            preview.appendChild(div);
         } else {
             formData.append('files[]', file);
             hasValidFiles = true;
@@ -35,8 +39,8 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
                 <p>파일명: ${file.name}</p>
                 <p class="loading">업로드 중...</p>
             `;
+            preview.appendChild(div);
         }
-        preview.appendChild(div);
     }
 
     // 유효한 파일이 있는 경우에만 업로드 진행
@@ -47,8 +51,10 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
         })
         .then(response => response.json())
         .then(results => {
-            preview.innerHTML = '';
-            let hasValidImage = false;
+            // 크기 초과 파일의 미리보기는 유지하면서 업로드된 파일들만 결과 업데이트
+            const validPreviews = Array.from(preview.children).filter(div => 
+                !div.querySelector('.error'));
+            validPreviews.forEach(div => div.remove());
 
             results.forEach(result => {
                 const div = document.createElement('div');
@@ -72,6 +78,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
                         updateUploadedImages(result);
                     }
                     preview.appendChild(div);
+                    
     });
 
     // 유효한 이미지가 있으면 지도 버튼 표시
@@ -107,15 +114,52 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     }
 });
 
+
+// 페이지 로드 시 서버에서 설정값 가져오기
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/get_settings')
+        .then(response => response.json())
+        .then(data => {
+            MAX_IMAGES = data.max_images;  // MAX_IMAGES 전역 변수에 값 설정
+            MAX_FILE_SIZE = data.max_file_size;
+            document.getElementById('maxImageCount').textContent = data.max_images;
+            uploadedImageCount = data.current_images;  // 현재 이미지 수 설정
+            document.getElementById('imageCount').textContent = data.current_images;
+            checkImageLimit();  // 초기 상태 체크
+        });
+});
+
+function updateImageCounter() {
+    const counter = document.getElementById('imageCount');
+    counter.textContent = uploadedImageCount;
+}
+
+// 파일명 줄이기
+function truncateFilename(filename, maxLength = 25) {
+    if (filename.length <= maxLength) return filename;
+    
+    const extension = filename.slice(filename.lastIndexOf('.'));
+    const nameWithoutExt = filename.slice(0, filename.lastIndexOf('.'));
+    
+    return nameWithoutExt.slice(0, maxLength - 3 - extension.length) + '...' + extension;
+}
+
 function updateUploadedImages(result) {
     const uploadedImages = document.getElementById('uploadedImages');
     const imageItem = document.createElement('div');
     imageItem.className = 'uploaded-image-item';
 
     if (!result.error && result.metadata) {
+        uploadedImageCount++;
+        updateImageCounter();
+        checkImageLimit();  // 이미지 추가 후 체크
+
+         // 파일명 줄이기 적용
+        const truncatedFilename = truncateFilename(result.original_filename);
+
         imageItem.innerHTML = `
             <div class="image-header">
-                <span class="filename">${result.original_filename}</span>
+                <span class="filename" title="${result.original_filename}">${truncatedFilename}</span>
                 <button class="delete-btn" onclick="deleteImage('${result.saved_filename}', this)">×</button>
             </div>
             <img src="/uploads/${result.saved_filename}" alt="${result.original_filename}" class="uploaded-image">
@@ -138,6 +182,22 @@ function updateUploadedImages(result) {
     }
 }
 
+function checkImageLimit() {
+    const mapButton = document.getElementById('showMapBtn');
+    const warningMsg = document.getElementById('limitWarning');
+    
+    if (uploadedImageCount > MAX_IMAGES) {
+        mapButton.disabled = true;
+        mapButton.style.backgroundColor = '#ccc';  // 비활성화 상태 시각적 표시
+        warningMsg.style.display = 'block';
+        warningMsg.textContent = `지도 보기는 최대 ${MAX_IMAGES}개의 이미지만 가능합니다. ${uploadedImageCount - MAX_IMAGES}개의 이미지를 삭제해주세요.`;
+    } else {
+        mapButton.disabled = false;
+        mapButton.style.backgroundColor = '#2196F3';  // 활성화 상태로 복원
+        warningMsg.style.display = 'none';
+    }
+}
+
 // 이미지 삭제 함수
 function deleteImage(filename, buttonElement) {
     if (confirm('이미지를 삭제하시겠습니까?')) {
@@ -150,6 +210,9 @@ function deleteImage(filename, buttonElement) {
                 // 삭제 성공 시 해당 이미지 항목 제거
                 const imageItem = buttonElement.closest('.uploaded-image-item');
                 imageItem.remove();
+                uploadedImageCount--;
+                updateImageCounter();
+                checkImageLimit();
             } else {
                 alert('이미지 삭제 실패: ' + data.error);
             }
