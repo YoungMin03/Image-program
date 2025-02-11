@@ -113,75 +113,9 @@ def show_map():
         locations.sort(key=lambda x: x['time'])
         
         # 지도 생성
-        m = folium.Map(
-            location=[37.5665, 126.9780] if not locations else [locations[0]['lat'], locations[0]['lng']],
-            zoom_start=12
-        )
-        
-        # 마커와 경로 추가
-        points = []
-        for loc in locations:
-            # 팝업 내용 생성
-            popup_content = f"""
-                <div style="width:200px">
-                    <img src="/uploads/{loc['filename']}" style="width:100%;border-radius:4px;margin-bottom:8px">
-                    <div style="font-size:12px;color:#666;">
-                        <p style="margin:4px 0">촬영시간: {loc['time']}</p>
-                        <p style="margin:4px 0">위도: {loc['lat']}</p>
-                        <p style="margin:4px 0">경도: {loc['lng']}</p>
-                    </div>
-                </div>
-            """
-            
-            # 마커 추가
-            folium.Marker(
-                [loc['lat'], loc['lng']],
-                popup=folium.Popup(popup_content, max_width=250),
-                icon=folium.Icon(color='red')
-            ).add_to(m)
-            
-            points.append([loc['lat'], loc['lng']])
-        
-        # 경로 선 그리기
-        if len(points) > 1:
-            folium.PolyLine(
-                points,
-                weight=2,
-                color='blue',
-                opacity=0.8
-            ).add_to(m)
-        
-        # 돌아가기 버튼이 있는 지도 HTML 생성
-        map_html = m._repr_html_()
-        return f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    .back-button {{
-                        position: absolute;
-                        top: 20px;
-                        right: 20px;
-                        z-index: 1000;
-                        background-color: white;
-                        padding: 10px 20px;
-                        border-radius: 4px;
-                        text-decoration: none;
-                        color: #333;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                        font-family: Arial, sans-serif;
-                    }}
-                    .back-button:hover {{
-                        background-color: #f0f0f0;
-                    }}
-                </style>
-            </head>
-            <body>
-                <a href="/" class="back-button">메인 페이지로 돌아가기</a>
-                {map_html}
-            </body>
-            </html>
-        """
+        return render_template('map.html', 
+                            locations=locations,
+                            KAKAO_MAP_API_KEY='247bb0685cd2081d02c7e8c416469352')
             
     except Exception as e:
         return f"지도 생성 중 오류 발생: {str(e)}"

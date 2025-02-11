@@ -1,0 +1,39 @@
+<!-- templates/index.html 수정 -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>이미지 업로드</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <h2>이미지 업로드</h2>
+            <div class="upload-form">
+                <form id="uploadForm" method="post" enctype="multipart/form-data">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" name="files[]" multiple accept=".jpg,.jpeg,.png">
+                        <label for="fileInput" class="file-label">파일 선택</label>
+                        <span id="fileList">선택된 파일 없음</span>
+                    </div>
+                    <button type="submit" class="upload-button">업로드</button>
+                </form>
+            </div>
+            <div id="preview" class="preview-container"></div>
+            <div id="error" class="error-message"></div>
+        </div>
+
+        <!-- 사이드바: 업로드된 이미지 목록 -->       
+        <div class="sidebar">
+            <h3>업로드된 이미지</h3>
+            <div id="uploadedImages" class="uploaded-images"></div>
+            <div class="upload-counter">
+                <span id="imageCount">0</span>/<span id="maxImageCount">5</span> 이미지
+                <p class="limit-warning" id="limitWarning" style="display: none;"></p>
+            </div>
+            <button id="showMapBtn" class="map-button" onclick="location.href='/map'" style="display: none;">지도로 보기</button>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+</body>
+</html>
